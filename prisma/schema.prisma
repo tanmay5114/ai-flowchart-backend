@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @default(uuid())
+  name String
+  thumbnailUrl String?
+  username String @unique
+  password String
+
+  createdAt DateTime @default(now())
+  threads Thread[]
+  comments Comment[]
+  likes Likes[]
+}
+
+model Admin {
+  id String @id @default(uuid())
+
+  createdAt DateTime @default(now())
+  threads Thread[]
+  comments Comment[]
+  likes Likes[]
+}
+
+
+
+model Tags {
+  id Int @id @default(autoincrement())
+  tagName String @unique
+  threads Thread[] @relation("TagsThread")
+}
+
+model Likes {
+  id Int @id @default(autoincrement())
+  userId String?
+  adminId String?
+  user User? @relation(fields: [userId], references: [id])
+  admin Admin? @relation(fields: [adminId], references: [id])
+  threadId String?
+  thread Thread? @relation(fields: [threadId], references: [id])
+  commentId String?
+  comment Comment? @relation(fields: [commentId], references: [id])
+}
+
+model Thread {
+  id String @id @default(uuid())
+  content String?
+  imageUrl String?
+  role Int @default(0) // 0 - User, 1 - Admin
+  userId String?
+  adminId String?
+  user User? @relation(fields: [userId], references: [id])
+  admin Admin? @relation(fields: [adminId], references: [id])
+  likeCount Int @default(0)
+  likes Likes[]
+
+  commentCount Int @default(0)
+  comments Comment[]
+
+  tags Tags[] @relation("TagsThread")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+}
+
+model Comment {
+  id String @id @default(uuid())
+  threadId String?
+  thread Thread? @relation(fields: [threadId], references: [id])
+
+  commentId String?
+  comment Comment? @relation("CommentReplies", fields: [commentId], references: [id])
+  
+  content String?
+  imageUrl String?
+  role Int @default(0) // 0 - User, 1 - Admin
+  userId String?
+  adminId String?
+  user User? @relation(fields: [userId], references: [id])
+  admin Admin? @relation(fields: [adminId], references: [id])
+  likeCount Int @default(0)
+  likes Likes[]
+  
+  commentCount Int @default(0)
+  comments Comment[] @relation("CommentReplies")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
