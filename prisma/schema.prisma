@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Status {
+  ACTIVE
+  UNACTIVE
+}
+
 model User {
   id String @id @default(uuid())
   name String
@@ -47,6 +52,7 @@ model Likes {
   thread Thread? @relation(fields: [threadId], references: [id])
   commentId String?
   comment Comment? @relation(fields: [commentId], references: [id])
+  status Status @default(ACTIVE)
 }
 
 model Thread {
@@ -89,7 +95,6 @@ model Comment {
   likeCount Int @default(0)
   likes Likes[]
   
-  commentCount Int @default(0)
   comments Comment[] @relation("CommentReplies")
 
   createdAt DateTime @default(now())
