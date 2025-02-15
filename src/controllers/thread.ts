@@ -11,6 +11,8 @@ const prisma = new PrismaClient();
 export const addThread: RequestHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
     const parsedData = addThreadSchema.safeParse(req.body);
     const { userId, adminId } = req;
+    console.log("this is uswrid, use", userId);
+    console.log("this is admin id", adminId);
 
     if (!parsedData.success) {
         throw new ApiError(400, "Some values are missing");
@@ -25,6 +27,8 @@ export const addThread: RequestHandler = asyncHandler(async (req: AuthRequest, r
     const uniqueTags = Array.from(new Set(
         (tags?.split(',') || []).map(tag => parseInt(tag.trim())).filter(Boolean)
     ));
+
+    console.log(uniqueTags, "this is unique tags");
 
     await prisma.thread.create({
         data: {

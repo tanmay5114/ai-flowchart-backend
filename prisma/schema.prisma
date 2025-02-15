@@ -14,7 +14,6 @@ enum Status {
 
 model User {
   id String @id @default(uuid())
-  name String
   thumbnailUrl String?
   username String @unique
   password String
@@ -23,11 +22,14 @@ model User {
   threads Thread[]
   comments Comment[]
   likes Likes[]
+
+  @@index([username])
 }
 
 model Admin {
   id String @id @default(uuid())
-
+  username String @unique
+  password String
   createdAt DateTime @default(now())
   threads Thread[]
   comments Comment[]
@@ -64,26 +66,23 @@ model Thread {
   adminId String?
   user User? @relation(fields: [userId], references: [id])
   admin Admin? @relation(fields: [adminId], references: [id])
-  likeCount Int @default(0)
   likes Likes[]
 
-  commentCount Int @default(0)
   comments Comment[]
 
   tags Tags[] @relation("TagsThread")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
 }
 
 model Comment {
   id String @id @default(uuid())
   threadId String?
-  thread Thread? @relation(fields: [threadId], references: [id])
+  thread Thread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   commentId String?
-  comment Comment? @relation("CommentReplies", fields: [commentId], references: [id])
+  comment Comment? @relation("CommentReplies", fields: [commentId], references: [id], onDelete: Cascade)
   
   content String?
   imageUrl String?
@@ -92,7 +91,6 @@ model Comment {
   adminId String?
   user User? @relation(fields: [userId], references: [id])
   admin Admin? @relation(fields: [adminId], references: [id])
-  likeCount Int @default(0)
   likes Likes[]
   
   comments Comment[] @relation("CommentReplies")
@@ -100,3 +98,4 @@ model Comment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+// if you want the child comment not get deleted, then remove onCascade from the comment, here I am using it in two places, remember.

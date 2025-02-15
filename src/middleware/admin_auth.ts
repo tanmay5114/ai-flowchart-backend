@@ -1,26 +1,30 @@
 import { NextFunction, Request, Response } from "express";
 import { ApiError } from "../utils/ApiError";
-import jwt, { JsonWebTokenError, TokenExpiredError } from "jsonwebtoken";
+import jwt, { JsonWebTokenError, JwtPayload, TokenExpiredError } from "jsonwebtoken";
+import { config } from "../types/config";
 import { AuthRequest } from "../types/request";
-const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || "";
+const ADMIN_JWT_SECRET = config.admin_jwt_secret
 
-export const adminToken = (req: AuthRequest, res: Response, next: NextFunction) => {
-    const token = req.cookies.auth_token;
+export const adminToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const token = req.cookies.auth_token;
+        if (!token) {
+            return next(new ApiError(401, "Unauthorized - No token provided"));
+        }
 
-    if (!token) {
-        throw new ApiError(401, "Unauthorized")
+        const decoded = jwt.verify(token, ADMIN_JWT_SECRET) as JwtPayload;
+
+        if (!decoded || !decoded.id) {
+            return next(new ApiError(403, "Forbidden - Invalid token"));
+        }
+
+        req.adminId = decoded.id;
+
+        next();
+    } catch (error) {
+        if (error instanceof TokenExpiredError) {
+            return next(new ApiError(403, "Token expired, please login again"));
+        }
+        return next(new ApiError(403, "Invalid authentication token"));
     }
-
-    jwt.verify(token, ADMIN_JWT_SECRET, (err: any, decoded: any) => {
-        if (err instanceof TokenExpiredError) {
-            throw new ApiError(403, "Token expired")
-        }
-        else if (decoded && decoded.id) {        
-            req.adminId = decoded.id as string
-            next();
-        }
-        else if (err instanceof JsonWebTokenError) {
-            throw new ApiError(403, "Invalid Token")
-        }
-    });
-}
+};

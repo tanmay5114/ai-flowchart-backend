@@ -31,5 +31,15 @@ export const likePostSchema = z.object({
     })
 });
 
+export const userSigninSchema = z.object({
+    username: z.string().min(3, "Username should contain atleast 3 characters"),
+    password: z.string().min(6, "Password should contain atleast 6 characters")
+});
+
+export const adminSigninSchema = z.object({
+    username: z.string().min(1),
+    password: z.string().min(1).refine(password => /!/.test(password))
+})
+
 
 // doing it optional due to image 

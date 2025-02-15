@@ -75,8 +75,8 @@ export const likeAPost: RequestHandler = asyncHandler(async (req: AuthRequest, r
       if (!isLikePresent) {
         await prisma.likes.create({
             data: {
-                userId: userId ? userId : null,
-                adminId: adminId ? adminId : null,
+                userId: userId || undefined,
+                adminId: adminId || undefined,
                 threadId: parent === "thread" ? parentId : null,
                 commentId: parent === "comment" ? parentId: null,
             }

@@ -5,10 +5,10 @@ import { adminToken } from "../middleware/admin_auth";
 
 const threadRouter: Router = Router();
 
-threadRouter.post("/add", userToken , adminToken , addThread)
-threadRouter.put("/:threadId", userToken, adminToken, editThread)
-threadRouter.delete("/:threadId", userToken, adminToken , deleteThread)
-threadRouter.get("/threads", userToken, adminToken, getAllThreads)
-threadRouter.get("/:threadId", userToken, adminToken, getAllComments)
+threadRouter.post("/add", userToken , addThread)
+threadRouter.put("/:threadId", userToken, editThread)
+threadRouter.delete("/:threadId", userToken , deleteThread)
+threadRouter.get("/threads", userToken, getAllThreads)
+threadRouter.get("/:threadId", userToken, getAllComments)
 
 export default threadRouter;

@@ -1,15 +1,15 @@
 import express, { Express } from "express";
 import apiRoutes from "./routes/main"
 import cors from "cors";
-import dotenv from "dotenv";
+import { config } from "./types/config"
+import cookieParser from "cookie-parser"
 
 const app: Express = express();
-dotenv.config();
-const port: number = Number(process.env.PORT) || 3001;
+const port: number = config.port || 3001;
 
-
-app.use(cors());
 app.use(express.json());
+app.use(cors());
+app.use(cookieParser()); // Enables reading cookies
 app.use("/api/v1", apiRoutes)
 
 app.listen(port, ()=> {
