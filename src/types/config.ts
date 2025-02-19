@@ -18,5 +18,7 @@ export const config = {
     region: process.env.S3_REGION as string,
     cloudfront_pvt_key: fs.readFileSync(path.resolve(privateKeyPath), "utf-8"),
     cloudfront_key_id: process.env.CLOUDFRONT_KEY_ID as string,
-    cdn_link: process.env.CDN_LINK as string
+    cdn_link: process.env.CDN_LINK as string,
+    presigned_url_expiration_time: Number(process.env.PRESIGNED_URL_EXPIRATION_TIME) as number,
+    distribution_id: process.env.DISTRIBUTION_ID as string
 }
