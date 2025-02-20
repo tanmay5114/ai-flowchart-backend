@@ -9,6 +9,10 @@ const bucketName: string = config.bucket_name
 const accessKeyId: string = config.aws_access_key_id
 const secretAccessKey: string = config.aws_access_key_secret
 
+// const {region , bucket_name: bucketName  } = config
+
+console.log(bucketName)
+
 let s3: S3Client | null = null;
 let cloudfront: CloudFrontClient | null = null;
 
@@ -71,7 +75,7 @@ export const getPreSignedUrlForGettingFilesThroughCDN = async (objectKey: string
         const signedUrl = getSignedUrlForCDN({
             url: config.cdn_link + objectKey,
             keyPairId: config.cloudfront_key_id,
-            dateLessThan: new Date(Date.now() + 60 * 60 * 1000 * 24).toISOString(),
+            dateLessThan: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
             privateKey: config.cloudfront_pvt_key,
         });
 
@@ -108,25 +112,19 @@ export const deleteS3Files = async (objectKey: string) => {
             Bucket: bucketName,
             Key: objectKey
         };
-
-        try {
-            await s3.send(new HeadObjectCommand({ Bucket: bucketName, Key: objectKey }));
-        } catch (error: any) {
-            if (error.name === "NotFound") {
-                console.log(`File ${objectKey} not found in S3, skipping deletion.`);
-                return; // Exit gracefully if file is not found
-            }
-            throw error; // Rethrow for any other error
-        }
-
-
+            
+        await s3.send(new HeadObjectCommand({ Bucket: bucketName, Key: objectKey }));
         const s3Command = new DeleteObjectCommand(params)
         await s3.send(s3Command)
 
         // now the s3 file is deleted, we also have to invalidate the cache of cloudfront
         await invalidateCDNCache(objectKey);    
 
-    } catch (error) {
+    } catch (error: any) {
+        if (error.name === "NotFound") {
+            console.log(`File ${objectKey} not found in S3, skipping deletion.`);
+            throw error;
+        }
         console.log(`Error deleting S3 files and images: ${error}`)
         throw error;
     }
