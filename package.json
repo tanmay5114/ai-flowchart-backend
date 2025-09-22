@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node src/index.ts",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js"
   },
@@ -11,6 +11,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@prisma/client": "^6.16.2",
     "bcryptjs": "^3.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -28,9 +30,11 @@
     "@types/node": "^22.13.1",
     "dotenv": "^16.4.7",
     "eslint": "^9.20.0",
+    "nodemon": "^3.1.10",
     "prettier": "^3.5.0",
-    "prisma": "^6.3.1",
+    "prisma": "^6.16.2",
     "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
     "typescript": "^5.7.3"
   }
 }

@@ -10,7 +10,7 @@ const port: number = config.port || 3001;
 app.use(express.json());
 app.use(cors());
 app.use(cookieParser()); // Enables reading cookies
-app.use("/api/", apiRoutes)
+app.use("/", apiRoutes)
 
 app.listen(port, ()=> {
     console.log(`Server is running on port http://localhost:${port}`)
