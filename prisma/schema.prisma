@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  username  String     @unique
+  questions Question[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("users")
+}
+
+model Question {
+  id           String   @id @default(cuid())
+  userId       String
+  questionText String
+  status       String   @default("pending") // "pending", "answered", "failed"
+  answer       Answer?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("questions")
+}
+
+model Answer {
+  id             String         @id @default(cuid())
+  questionId     String         @unique
+  answerText     String
+  visualization  Visualization?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // Relations
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("answers")
+}
+
+model Visualization {
+  id       String  @id @default(cuid())
+  answerId String  @unique
+  duration Int     // in milliseconds
+  fps      Int     @default(30)
+  metadata Json?   // store any additional visualization config
+  layers   Layer[]
+
+  // Relations
+  answer Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+  @@map("visualizations")
+}
+
+model Layer {
+  id              String        @id @default(cuid())
+  visualizationId String
+  layerId         String        // unique identifier within the visualization
+  type            String        // "circle", "arrow", "rectangle", etc.
+  props           Json          // store shape properties as JSON
+  orderIndex      Int           @default(0) // for layer ordering
+  animations      Animation[]
+  
+  // Relations
+  visualization Visualization @relation(fields: [visualizationId], references: [id], onDelete: Cascade)
+
+  @@unique([visualizationId, layerId]) // ensure layerId is unique within each visualization
+  @@map("layers")
+}
+
+model Animation {
+  id       String @id @default(cuid())
+  layerId  String
+  property String // "x", "y", "orbit", etc.
+  fromValue Json?  // starting value (can be number, object, etc.)
+  toValue   Json?  // ending value
+  startTime Int    // start time in milliseconds
+  endTime   Int    // end time in milliseconds
+  easing    String @default("linear") // animation easing type
+
+  // Relations
+  layer Layer @relation(fields: [layerId], references: [id], onDelete: Cascade)
+
+  @@map("animations")
+}
