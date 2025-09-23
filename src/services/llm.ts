@@ -46,7 +46,7 @@ IMPORTANT: You must respond with ONLY valid JSON, no additional text or markdown
 
 For each question, provide:
 1. A clear, educational explanation of the concept (3-5 sentences)
-2. A visualization specification that demonstrates the concept
+2. A visualization specification that demonstrates the concept which the user asked. Make the best possible visualization to explain the concept. Even if it is not perfect, it is fine, the user's interest should spark after seeing the animation.
 
 Response format (JSON only):
 {
