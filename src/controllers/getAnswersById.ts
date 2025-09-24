@@ -31,12 +31,12 @@ export const getAnswerById: RequestHandler = asyncHandler(async (req: Request, r
                 },
                 visualization: {
                     include: {
-                        layers: {
+                        frames: {
                             include: {
-                                animations: true
+                                objects: true
                             },
                             orderBy: {
-                                orderIndex: 'asc'
+                                timestamp: 'asc'
                             }
                         }
                     }
@@ -48,28 +48,25 @@ export const getAnswerById: RequestHandler = asyncHandler(async (req: Request, r
             throw new ApiError(404, "Answer not found");
         }
 
-        // Format the response according to your spec
+        // Format the response according to your new frame-based spec
         const responseData = {
             id: answer.id,
             questionId: answer.questionId,
             question: answer.question.questionText,
             text: answer.answerText,
             visualization: answer.visualization ? {
-                id: answer.visualization.id,
+                id: answer.visualization.visualizationId || answer.visualization.id,
+                title: answer.visualization.title,
+                description: answer.visualization.description,
                 duration: answer.visualization.duration,
                 fps: answer.visualization.fps,
                 metadata: answer.visualization.metadata,
-                layers: answer.visualization.layers.map(layer => ({
-                    id: layer.layerId,
-                    type: layer.type,
-                    props: layer.props,
-                    animations: layer.animations.map(anim => ({
-                        property: anim.property,
-                        from: anim.fromValue,
-                        to: anim.toValue,
-                        start: anim.startTime,
-                        end: anim.endTime,
-                        easing: anim.easing
+                frames: answer.visualization.frames.map(frame => ({
+                    timestamp: frame.timestamp,
+                    objects: frame.objects.map(obj => ({
+                        id: obj.objectId,
+                        type: obj.type,
+                        properties: obj.properties
                     }))
                 }))
             } : null,
@@ -189,12 +186,12 @@ export const getVisualizationById: RequestHandler = asyncHandler(async (req: Req
             include: {
                 visualization: {
                     include: {
-                        layers: {
+                        frames: {
                             include: {
-                                animations: true
+                                objects: true
                             },
                             orderBy: {
-                                orderIndex: 'asc'
+                                timestamp: 'asc'
                             }
                         }
                     }
@@ -210,23 +207,20 @@ export const getVisualizationById: RequestHandler = asyncHandler(async (req: Req
             throw new ApiError(404, "Visualization not found for this answer");
         }
 
-        // Format visualization according to your spec
+        // Format visualization according to your new frame-based spec
         const visualizationData = {
-            id: answer.visualization.id,
+            id: answer.visualization.visualizationId || answer.visualization.id,
+            title: answer.visualization.title,
+            description: answer.visualization.description,
             duration: answer.visualization.duration,
             fps: answer.visualization.fps,
             metadata: answer.visualization.metadata,
-            layers: answer.visualization.layers.map(layer => ({
-                id: layer.layerId,
-                type: layer.type,
-                props: layer.props,
-                animations: layer.animations.map(anim => ({
-                    property: anim.property,
-                    from: anim.fromValue,
-                    to: anim.toValue,
-                    start: anim.startTime,
-                    end: anim.endTime,
-                    easing: anim.easing
+            frames: answer.visualization.frames.map(frame => ({
+                timestamp: frame.timestamp,
+                objects: frame.objects.map(obj => ({
+                    id: obj.objectId,
+                    type: obj.type,
+                    properties: obj.properties
                 }))
             }))
         };

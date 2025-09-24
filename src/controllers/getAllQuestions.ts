@@ -4,16 +4,9 @@ import { asyncHandler } from "../utils/AsyncHandler";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { PrismaClient } from "../generated/prisma";
-import { llmService, LLMResponse } from "../services/llm";
-import { sseService } from "../services/sse";
 
 const prisma = new PrismaClient();
 
-// ... (submitQuestion code from previous artifact)
-
-/**
- * GET /api/questions - Fetch all past questions and answers
- */
 export const getAllQuestions: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const { userId, page = 1, limit = 50, status } = req.query;
 
@@ -112,12 +105,12 @@ export const getQuestionById: RequestHandler = asyncHandler(async (req: Request,
                     include: {
                         visualization: {
                             include: {
-                                layers: {
+                                frames: {
                                     include: {
-                                        animations: true
+                                        objects: true
                                     },
                                     orderBy: {
-                                        orderIndex: 'asc'
+                                        timestamp: 'asc'
                                     }
                                 }
                             }

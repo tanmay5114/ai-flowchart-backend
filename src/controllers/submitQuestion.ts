@@ -3,7 +3,7 @@ import { asyncHandler } from "../utils/AsyncHandler";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { PrismaClient } from "../generated/prisma";
-import { llmService, LLMResponse } from "../services/llm";
+import { llmService, LLMResponse, Frame, VisualizationObject, VisualizationData } from "../services/llm";
 import { sseService } from "../services/sse";
 
 const prisma = new PrismaClient();
@@ -97,6 +97,9 @@ async function processQuestionInBackground(questionId: string, questionText: str
         // 2. Save answer and visualization to database
         const answer = await saveAnswerWithVisualization(questionId, llmResponse);
 
+        console.log("this is the final answer getting broadcasted", answer );
+        console.log("this is the frames ", JSON.stringify(answer.visualization?.frames));
+
         // 3. Update question status
         await prisma.question.update({
             where: { id: questionId },
@@ -109,7 +112,22 @@ async function processQuestionInBackground(questionId: string, questionText: str
                 id: answer.id,
                 questionId: answer.questionId,
                 text: answer.answerText,
-                visualization: answer.visualization,
+                visualization: answer.visualization ? {
+                    id: answer.visualization.visualizationId || answer.visualization.id,
+                    title: answer.visualization.title,
+                    description: answer.visualization.description,
+                    duration: answer.visualization.duration,
+                    fps: answer.visualization.fps,
+                    metadata: answer.visualization.metadata,
+                    frames: answer.visualization.frames.map(frame => ({
+                        timestamp: frame.timestamp,
+                        objects: frame.objects.map(obj => ({
+                            id: obj.objectId,
+                            type: obj.type,
+                            properties: obj.properties
+                        }))
+                    }))
+                } : null,
                 createdAt: answer.createdAt
             }
         });
@@ -150,28 +168,27 @@ async function saveAnswerWithVisualization(questionId: string, llmResponse: LLMR
 
     // Add visualization if provided
     if (llmResponse.visualization) {
-        const viz = llmResponse.visualization;
+        const viz: VisualizationData = llmResponse.visualization;
         
         answerData.visualization = {
             create: {
+                visualizationId: viz.id,
+                title: viz.title,
+                description: viz.description,
                 duration: viz.duration,
                 fps: viz.fps,
                 metadata: viz.metadata || null,
-                layers: {
-                    create: viz.layers.map((layer, index) => ({
-                        layerId: layer.id,
-                        type: layer.type,
-                        props: layer.props,
-                        orderIndex: index,
-                        animations: {
-                            create: layer.animations?.map(anim => ({
-                                property: anim.property,
-                                fromValue: anim.from,
-                                toValue: anim.to,
-                                startTime: anim.start,
-                                endTime: anim.end,
-                                easing: anim.easing || 'linear'
-                            })) || []
+                frames: {
+                    create: viz.frames.map((frame: Frame, frameIndex: number) => ({
+                        timestamp: frame.timestamp,
+                        orderIndex: frameIndex,
+                        objects: {
+                            create: frame.objects.map((obj: VisualizationObject, objIndex: number) => ({
+                                objectId: obj.id,
+                                type: obj.type,
+                                properties: obj.properties,
+                                orderIndex: objIndex
+                            }))
                         }
                     }))
                 }
@@ -185,12 +202,12 @@ async function saveAnswerWithVisualization(questionId: string, llmResponse: LLMR
         include: {
             visualization: {
                 include: {
-                    layers: {
+                    frames: {
                         include: {
-                            animations: true
+                            objects: true
                         },
                         orderBy: {
-                            orderIndex: 'asc'
+                            timestamp: 'asc'
                         }
                     }
                 }

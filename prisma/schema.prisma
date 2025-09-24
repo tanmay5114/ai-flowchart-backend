@@ -51,47 +51,33 @@ model Answer {
 }
 
 model Visualization {
-  id       String  @id @default(cuid())
-  answerId String  @unique
-  duration Int     // in milliseconds
-  fps      Int     @default(30)
-  metadata Json?   // store any additional visualization config
-  layers   Layer[]
-
-  // Relations
-  answer Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
-
-  @@map("visualizations")
+  id             String   @id @default(cuid())
+  visualizationId String?
+  title          String?
+  description    String?
+  duration       Int
+  fps            Int
+  metadata       Json?
+  frames         Frame[]
+  answerId       String   @unique
+  answer         Answer   @relation(fields: [answerId], references: [id])
 }
 
-model Layer {
-  id              String        @id @default(cuid())
-  visualizationId String
-  layerId         String        // unique identifier within the visualization
-  type            String        // "circle", "arrow", "rectangle", etc.
-  props           Json          // store shape properties as JSON
-  orderIndex      Int           @default(0) // for layer ordering
-  animations      Animation[]
-  
-  // Relations
-  visualization Visualization @relation(fields: [visualizationId], references: [id], onDelete: Cascade)
-
-  @@unique([visualizationId, layerId]) // ensure layerId is unique within each visualization
-  @@map("layers")
+model Frame {
+  id               String              @id @default(cuid())
+  timestamp        Int
+  orderIndex       Int
+  objects          VisualizationObject[]
+  visualizationId  String
+  visualization    Visualization       @relation(fields: [visualizationId], references: [id])
 }
 
-model Animation {
-  id       String @id @default(cuid())
-  layerId  String
-  property String // "x", "y", "orbit", etc.
-  fromValue Json?  // starting value (can be number, object, etc.)
-  toValue   Json?  // ending value
-  startTime Int    // start time in milliseconds
-  endTime   Int    // end time in milliseconds
-  easing    String @default("linear") // animation easing type
-
-  // Relations
-  layer Layer @relation(fields: [layerId], references: [id], onDelete: Cascade)
-
-  @@map("animations")
+model VisualizationObject {
+  id         String @id @default(cuid())
+  objectId   String
+  type       String
+  properties Json
+  orderIndex Int
+  frameId    String
+  frame      Frame  @relation(fields: [frameId], references: [id])
 }
