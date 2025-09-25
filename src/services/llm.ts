@@ -16,143 +16,6 @@ export interface LLMResponse {
   visualization?: MermaidVisualization;
 }
 
-// Enhanced sanitization function with better error handling
-const sanitizeChartDefinition = (definition: string): string => {
-  console.log('🧹 Sanitizing definition (length):', definition.length);
-  console.log('🧹 Raw definition:', JSON.stringify(definition));
-  
-  // Check if definition seems truncated
-  if (definition.includes('{') && !definition.includes('}')) {
-    console.warn('⚠️ Chart definition appears truncated - missing closing braces');
-  }
-  
-  if (definition.includes('[') && definition.match(/\[/g)?.length !== definition.match(/\]/g)?.length) {
-    console.warn('⚠️ Chart definition appears truncated - mismatched brackets');
-  }
-  
-  let sanitized = definition;
-  
-  // Remove trailing semicolons at end of lines
-  sanitized = sanitized.replace(/;(\s*$)/gm, '$1');
-  
-  // CRITICAL: Fix nested brackets and incomplete arrows first
-  sanitized = sanitized
-    // Fix nested brackets like ["[Monitor Analyze]..."] -> ["Monitor Analyze..."]
-    .replace(/\["\s*\[([^\]]*)\]([^"]*?)"\s*\]/g, '["$1$2"]')
-    .replace(/\[\s*\[([^\]]*)\]([^\]]*?)\s*\]/g, '["$1$2"]')
-    
-    // Fix incomplete arrows (-- without >) 
-    .replace(/(\s+)--(\s+)(?!>|-)([A-Za-z0-9_])/g, '$1-->$3')
-    .replace(/(\w|]|})(\s*)--(\s*)([A-Za-z0-9_])/g, '$1$2-->$3$4')
-    
-    // Fix malformed arrows with extra dashes
-    .replace(/---+>/g, '-->')
-    .replace(/--\s*-+>/g, '-->')
-    
-    // Remove lines that look completely malformed
-    .split('\n')
-    .filter(line => {
-      const trimmedLine = line.trim();
-      // Remove lines with unmatched quotes or brackets that can't be fixed
-      if (trimmedLine.includes('"') && (trimmedLine.match(/"/g) || []).length % 2 !== 0) {
-        console.warn('🚨 Removing line with unmatched quotes:', trimmedLine);
-        return false;
-      }
-      // Remove lines with incomplete arrow syntax that we couldn't fix
-      if (trimmedLine.match(/--\s*$/)) {
-        console.warn('🚨 Removing line with incomplete arrow:', trimmedLine);
-        return false;
-      }
-      return true;
-    })
-    .join('\n')
-    
-    // Handle problematic characters in labels
-    .replace(/([A-Za-z0-9_]+)\s*\{\s*([^}]*[<>&"'`]+[^}]*)\s*\}/g, (match, nodeId, label) => {
-      const cleanLabel = label
-        .replace(/["'`]/g, '') // Remove quotes
-        .replace(/[<>&]/g, '') // Remove HTML-like characters
-        .replace(/\[[^\]]*\]/g, '') // Remove any remaining nested brackets
-        .replace(/\s+/g, ' ') // Normalize whitespace
-        .trim();
-      return `${nodeId}{"${cleanLabel}"}`;
-    })
-    
-    // Handle square bracket labels with problematic characters
-    .replace(/\[([^[\]]*[<>&"'`\[\]]+[^[\]]*)\]/g, (match, label) => {
-      const cleanLabel = label
-        .replace(/["'`]/g, '') // Remove quotes
-        .replace(/[<>&]/g, '') // Remove HTML-like characters
-        .replace(/\[[^\]]*\]/g, '') // Remove nested brackets
-        .replace(/\s+/g, ' ') // Normalize whitespace
-        .trim();
-      return `["${cleanLabel}"]`;
-    })
-    
-    // Handle parentheses in labels that aren't properly quoted
-    .replace(/\[([^[\]]*)\(([^)]*)\)([^[\]]*)\]/g, '["$1$2$3"]')
-    
-    // Quote labels with special characters
-    .replace(/\[([^[\]"]*[,&<>'"()]+[^[\]"]*)\]/g, '["$1"]')
-    
-    // Fix double-quoted labels
-    .replace(/\[""([^"]*)""]/g, '["$1"]')
-    
-    // Handle curly brace labels with special characters
-    .replace(/\{([^{}]*[,&<>'"()]+[^{}]*)\}/g, '{"$1"}')
-    
-    // Remove any stray control characters
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-    
-    // Comprehensive arrow syntax fixes
-    .replace(/--+>/g, '-->')
-    .replace(/-{2,}>/g, '-->')
-    .replace(/=+>/g, '==>')
-    .replace(/={2,}>/g, '==>')
-    
-    // Ensure proper spacing around arrows
-    .replace(/(\w|\]|\})\s*-->\s*(\w)/g, '$1 --> $2')
-    .replace(/(\w|\]|\})\s*==>\s*(\w)/g, '$1 ==> $2')
-    
-    // Handle node definitions that might have syntax issues
-    .replace(/([A-Za-z0-9_]+)(\{[^}]*\}|\[[^\]]*\]|\([^)]*\))\s*([^-=\s\n\r][^-=\n\r]*?)(\s*(?:-->|==>|\n|\r|$))/g, 
-      (match, nodeId, shape, extra, ending) => {
-        if (extra.trim() && !extra.match(/^(-->|==>)/)) {
-          console.warn(`⚠️ Removing extra content after node ${nodeId}: "${extra.trim()}"`);
-          return `${nodeId}${shape}${ending}`;
-        }
-        return match;
-      })
-    
-    // Final cleanup: normalize line endings and remove empty lines
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
-    .join('\n')
-    .trim();
-  
-  // Final validation check
-  const lines = sanitized.split('\n');
-  const validatedLines = lines.filter((line, index) => {
-    // Check for still problematic patterns
-    if (line.match(/\["\s*\[/)) {
-      console.warn(`🚨 Line ${index + 1} still has nested brackets, removing:`, line);
-      return false;
-    }
-    if (line.match(/--\s*$/)) {
-      console.warn(`🚨 Line ${index + 1} has incomplete arrow, removing:`, line);
-      return false;
-    }
-    return true;
-  });
-  
-  const finalSanitized = validatedLines.join('\n');
-  console.log('✅ Sanitized definition:', JSON.stringify(finalSanitized));
-  return finalSanitized;
-};
-
 class LLMService {
   private model;
 
@@ -167,27 +30,46 @@ IMPORTANT: You must respond with ONLY valid JSON, no additional text or markdown
 
 For each question, provide:
 1. A clear, educational explanation of the concept (3-5 sentences)
-2. A Mermaid flowchart that visualizes the concept, process, or relationship
+2. A Mermaid flowchart using ONLY the safe templates provided below
 
-Available Mermaid chart types:
-- flowchart TD (top down)
-- flowchart LR (left to right) 
-- flowchart TB (top bottom)
-- sequenceDiagram
-- stateDiagram-v2
-- erDiagram
-- graph TD/LR
+MANDATORY: Use ONLY these exact templates and substitute the labels:
 
-CRITICAL MERMAID SYNTAX RULES:
-- NEVER use special characters like <, >, &, ", ', \`, or control characters in node labels
-- ALWAYS quote labels containing parentheses, commas, or special characters: ["Label with (parentheses)"]
-- Use simple, clean labels without HTML-like syntax
-- Ensure all brackets [], braces {}, and parentheses () are properly matched
-- Use only standard ASCII characters in labels
-- Keep arrow syntax simple: --> or ==>
-- No trailing semicolons or extra characters after node definitions
-- Example of GOOD syntax: A["Clean Label"] --> B{Simple Question?}
-- Example of BAD syntax: A[Label with <bad> chars] --> B{Question (with unquoted parens)}
+TEMPLATE 1 - Simple Process (for step-by-step explanations):
+flowchart TD
+    A[Step 1 Label] --> B[Step 2 Label]
+    B --> C[Step 3 Label]
+    C --> D[Step 4 Label]
+    D --> E[Final Step Label]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style E fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+
+TEMPLATE 2 - Decision Process (for yes/no or choice explanations):
+flowchart TD
+    A[Starting Point] --> B{Key Question}
+    B -->|Option 1| C[Result A]
+    B -->|Option 2| D[Result B]
+    C --> E[Final Outcome]
+    D --> E
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style E fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+
+TEMPLATE 3 - Cycle Process (for circular or repeating processes):
+flowchart TD
+    A[Phase 1] --> B[Phase 2]
+    B --> C[Phase 3]
+    C --> D[Phase 4]
+    D --> A
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+
+RULES:
+- Choose the most appropriate template
+- Replace ONLY the labels inside [ ] and { }
+- Keep labels simple - no special characters, parentheses, or complex punctuation
+- Use only letters, numbers, spaces, and hyphens
+- Maximum 3-4 words per label
 
 Response format (JSON only):
 {
@@ -196,38 +78,23 @@ Response format (JSON only):
     "id": "unique_id",
     "title": "Chart Title",
     "description": "Brief description of what the chart shows",
-    "chartDefinition": "flowchart TD\\n    A[Start] --> B{Decision?}\\n    B -->|Yes| C[Action]\\n    B -->|No| D[Alternative]\\n    C --> E[End]\\n    D --> E\\n    \\n    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px\\n    style E fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px",
+    "chartDefinition": "[EXACT TEMPLATE WITH SUBSTITUTED LABELS]",
     "theme": "default"
   }
 }
 
-Chart guidelines:
-- Use meaningful node labels that explain the concept (but keep them clean and simple)
-- Add styling with fill colors and stroke properties
-- For processes: use flowchart TD or LR
-- For sequences: use sequenceDiagram
-- For state changes: use stateDiagram-v2
-- For data relationships: use erDiagram
-- Keep charts educational and clear
-- Use decision nodes {} for branching logic
-- Use action nodes [] for processes
-- Use different colors to highlight key concepts
-- ALWAYS validate that your Mermaid syntax is clean and parseable
+Example good labels:
+- "Input Data"
+- "Process Information"
+- "Make Decision"
+- "Generate Output"
 
-Label cleaning examples:
-- Instead of: A[Greenhouse gases (CO2, Methane etc.)]
-- Use: A["Greenhouse gases - CO2 Methane etc"]
-- Instead of: B{Is temperature > 25°C?}
-- Use: B{"Is temperature above 25C?"}
+Example bad labels (NEVER USE):
+- "Process Data (CSV, JSON, etc.)"
+- "Check if temp > 25°C"
+- "Handle errors & exceptions"
 
-Color suggestions:
-- Blue (#e3f2fd, #1976d2): Start/Input
-- Purple (#f3e5f5, #7b1fa2): End/Output  
-- Orange (#fff3e0, #f57c00): Important processes
-- Green (#e8f5e8, #388e3c): Success/Results
-- Red (#ffebee, #c62828): Errors/Warnings
-
-Remember: Create educational, clear flowcharts with CLEAN, PARSEABLE syntax that help explain the concept visually.`;
+Remember: Use ONLY the provided templates with simple label substitutions.`;
   }
 
   async generateAnswer(question: string): Promise<LLMResponse> {
@@ -285,10 +152,8 @@ Remember: Respond with ONLY the JSON object, no other text. Ensure all Mermaid s
       
       if (!response.visualization.chartDefinition) {
         response.visualization.chartDefinition = this.getDefaultChart();
-      } else {
-        // SANITIZE THE CHART DEFINITION FROM LLM
-        response.visualization.chartDefinition = sanitizeChartDefinition(response.visualization.chartDefinition);
       }
+      // REMOVED SANITIZATION - Using template approach instead
 
       if (!response.visualization.theme) {
         response.visualization.theme = 'default';
@@ -300,7 +165,7 @@ Remember: Respond with ONLY the JSON object, no other text. Ensure all Mermaid s
 
   private getDefaultChart(): string {
     return `flowchart TD
-    A[Question Asked] --> B{"Understanding Level?"}
+    A[Question Asked] --> B{Understanding Level}
     B -->|Basic| C[Simple Explanation]
     B -->|Advanced| D[Detailed Analysis]
     C --> E[Provide Examples]
@@ -332,18 +197,18 @@ Remember: Respond with ONLY the JSON object, no other text. Ensure all Mermaid s
         id: `fallback_${Date.now()}`,
         title: `Understanding: ${question.substring(0, 40)}...`,
         description: 'A flowchart breaking down the key concepts and relationships',
-        chartDefinition: sanitizeChartDefinition(fallbackChart), // SANITIZE FALLBACK TOO
+        chartDefinition: this.generateFallbackChart(chartType, question), // REMOVED SANITIZATION
         theme: 'default'
       }
     };
   }
 
   private generateFallbackChart(type: string, question: string): string {
-    const shortQuestion = question.substring(0, 20).replace(/[<>&"'`]/g, ''); // Clean question
+    const shortQuestion = question.substring(0, 20).replace(/[^\w\s-]/g, ''); // Clean question
     
     if (type === 'sequence') {
-      return `flowchart LR
-        A["Start: ${shortQuestion}..."] --> B[Analyze Question]
+      return `flowchart TD
+        A[Start Process] --> B[Analyze Question]
         B --> C[Gather Information]
         C --> D[Process Data] 
         D --> E[Generate Insights]
@@ -353,20 +218,17 @@ Remember: Respond with ONLY the JSON object, no other text. Ensure all Mermaid s
         style F fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
         style D fill:#fff3e0,stroke:#f57c00,stroke-width:2px`;
     } else if (type === 'state') {
-      return `stateDiagram-v2
-        [*] --> Question
-        Question --> Analysis
-        Analysis --> Understanding
-        Understanding --> Response
-        Response --> [*]
+      return `flowchart TD
+        A[Question Input] --> B[Processing State]
+        B --> C[Analysis State]
+        C --> D[Response State]
+        D --> E[Complete State]
         
-        Question: ${shortQuestion}...
-        Analysis: Processing Information
-        Understanding: Concept Clarity
-        Response: Final Answer`;
+        style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+        style E fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px`;
     } else {
       return `flowchart TD
-        A["${shortQuestion}..."] --> B{"Type of Question?"}
+        A[Question Input] --> B{Type of Question}
         B -->|Factual| C[Research Facts]
         B -->|Conceptual| D[Explain Concept]
         B -->|Process| E[Show Steps]
