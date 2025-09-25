@@ -40,7 +40,8 @@ model Answer {
   id         String   @id @default(cuid())
   questionId String   @unique
   answerText String
-  chart      Chart?   // Changed from visualization to chart
+  chartId    String?  @unique  // Add this field for the foreign key
+  chart      Chart?   @relation(fields: [chartId], references: [id]) // Complete the relation
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -52,7 +53,6 @@ model Answer {
 
 model Chart {
   id              String   @id @default(cuid())
-  chartId         String   @unique
   title           String
   description     String
   chartDefinition String   @db.Text // Mermaid chart definition string
@@ -62,7 +62,7 @@ model Chart {
   updatedAt       DateTime @updatedAt
 
   // Relations
-  answer Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  answer Answer? 
 
   @@map("charts")
 }

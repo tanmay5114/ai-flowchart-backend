@@ -201,62 +201,6 @@ export const getChartById: RequestHandler = asyncHandler(async (req: Request, re
 });
 
 /**
- * GET /api/charts/:chartId - Get chart by chart ID directly
- */
-export const getChartByChartId: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
-    const { chartId } = req.params;
-
-    if (!chartId) {
-        throw new ApiError(400, "Chart ID is required");
-    }
-
-    try {
-        const chart = await prisma.chart.findUnique({
-            where: { chartId },
-            include: {
-                answer: {
-                    include: {
-                        question: {
-                            select: {
-                                questionText: true,
-                                userId: true
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        if (!chart) {
-            throw new ApiError(404, "Chart not found");
-        }
-
-        const responseData = {
-            id: chart.chartId,
-            title: chart.title,
-            description: chart.description,
-            chartDefinition: chart.chartDefinition,
-            theme: chart.theme,
-            createdAt: chart.createdAt,
-            context: {
-                questionText: chart.answer.question.questionText,
-                answerText: chart.answer.answerText,
-                userId: chart.answer.question.userId
-            }
-        };
-
-        res.status(200).json(new ApiResponse(200, "Chart fetched successfully", responseData, true));
-
-    } catch (error) {
-        if (error instanceof ApiError) {
-            throw error;
-        }
-        console.error('Error fetching chart by chartId:', error);
-        throw new ApiError(500, "Failed to fetch chart");
-    }
-});
-
-/**
  * GET /api/charts - Get all charts with optional filters
  */
 export const getAllCharts: RequestHandler = asyncHandler(async (req: Request, res: Response) => {

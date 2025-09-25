@@ -50,7 +50,7 @@ export const getUserById: RequestHandler = asyncHandler(async (req: Request, res
                             select: {
                                 id: true,
                                 createdAt: true,
-                                visualization: {
+                                chart: { // ✅ Fixed: changed from visualization
                                     select: {
                                         id: true
                                     }
@@ -83,7 +83,7 @@ export const getUserById: RequestHandler = asyncHandler(async (req: Request, res
             where: { 
                 userId: id,
                 answer: {
-                    visualization: {
+                    chart: { // ✅ Fixed: changed from visualization
                         isNot: null
                     }
                 }
@@ -105,7 +105,7 @@ export const getUserById: RequestHandler = asyncHandler(async (req: Request, res
                 question: q.questionText,
                 status: q.status,
                 hasAnswer: !!q.answer,
-                hasVisualization: !!q.answer?.visualization,
+                hasVisualization: !!q.answer?.chart, // ✅ Fixed: changed from visualization
                 createdAt: q.createdAt,
                 answeredAt: q.answer?.createdAt || null
             }))

@@ -241,7 +241,7 @@ export const getChart: RequestHandler = asyncHandler(async (req: Request, res: R
 
     try {
         const chart = await prisma.chart.findUnique({
-            where: { chartId }
+            where: { id: chartId }
         });
 
         if (!chart) {
