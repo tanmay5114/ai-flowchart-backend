@@ -16,6 +16,94 @@ export interface LLMResponse {
   visualization?: MermaidVisualization;
 }
 
+// Enhanced sanitization function
+const sanitizeChartDefinition = (definition: string): string => {
+  console.log('🧹 Sanitizing definition (length):', definition.length);
+  console.log('🧹 Raw definition:', JSON.stringify(definition));
+  
+  // Check if definition seems truncated
+  if (definition.includes('{') && !definition.includes('}')) {
+    console.warn('⚠️ Chart definition appears truncated - missing closing braces');
+  }
+  
+  if (definition.includes('[') && definition.match(/\[/g)?.length !== definition.match(/\]/g)?.length) {
+    console.warn('⚠️ Chart definition appears truncated - mismatched brackets');
+  }
+  
+  let sanitized = definition;
+  
+  // Remove trailing semicolons at end of lines
+  sanitized = sanitized.replace(/;(\s*$)/gm, '$1');
+  
+  // Handle problematic characters that can cause parsing issues
+  sanitized = sanitized
+    // Remove or escape problematic punctuation in labels
+    .replace(/([A-Za-z0-9_]+)\s*\{\s*([^}]*[<>&"'`]+[^}]*)\s*\}/g, (match, nodeId, label) => {
+      const cleanLabel = label
+        .replace(/["'`]/g, '') // Remove quotes
+        .replace(/[<>&]/g, '') // Remove HTML-like characters
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .trim();
+      return `${nodeId}{${cleanLabel}}`;
+    })
+    
+    // Handle square bracket labels with problematic characters
+    .replace(/\[([^[\]]*[<>&"'`]+[^[\]]*)\]/g, (match, label) => {
+      const cleanLabel = label
+        .replace(/["'`]/g, '') // Remove quotes
+        .replace(/[<>&]/g, '') // Remove HTML-like characters
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .trim();
+      return `["${cleanLabel}"]`;
+    })
+    
+    // Handle parentheses in labels that aren't properly quoted
+    .replace(/\[([^[\]]*)\(([^)]*)\)([^[\]]*)\]/g, '["$1$2$3"]')
+    
+    // Quote labels with special characters
+    .replace(/\[([^[\]"]*[,&<>'"()]+[^[\]"]*)\]/g, '["$1"]')
+    
+    // Fix double-quoted labels
+    .replace(/\[""([^"]*)""]/g, '["$1"]')
+    
+    // Handle curly brace labels with special characters
+    .replace(/\{([^{}]*[,&<>'"()]+[^{}]*)\}/g, '{"$1"}')
+    
+    // Remove any stray control characters
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    
+    // Fix common arrow syntax issues
+    .replace(/--+>/g, '-->')
+    .replace(/-+>/g, '-->')
+    .replace(/=+>/g, '==>')
+    
+    // Ensure proper spacing around arrows
+    .replace(/(\w)\s*-->\s*(\w)/g, '$1 --> $2')
+    .replace(/(\w)\s*==>\s*(\w)/g, '$1 ==> $2')
+    
+    // Handle node definitions that might have syntax issues
+    .replace(/([A-Za-z0-9_]+)(\{[^}]*\}|\[[^\]]*\]|\([^)]*\))\s*([^-=\s][^-=\n\r]*?)(\s*(?:-->|==>|\n|\r|$))/g, 
+      (match, nodeId, shape, extra, ending) => {
+        if (extra.trim() && !extra.match(/^(-->|==>)/)) {
+          console.warn(`⚠️ Removing extra content after node ${nodeId}: "${extra.trim()}"`);
+          return `${nodeId}${shape}${ending}`;
+        }
+        return match;
+      })
+    
+    // Normalize line endings and clean up
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .join('\n')
+    .trim();
+  
+  console.log('✅ Sanitized definition:', JSON.stringify(sanitized));
+  return sanitized;
+};
+
 class LLMService {
   private model;
 
@@ -41,6 +129,17 @@ Available Mermaid chart types:
 - erDiagram
 - graph TD/LR
 
+CRITICAL MERMAID SYNTAX RULES:
+- NEVER use special characters like <, >, &, ", ', \`, or control characters in node labels
+- ALWAYS quote labels containing parentheses, commas, or special characters: ["Label with (parentheses)"]
+- Use simple, clean labels without HTML-like syntax
+- Ensure all brackets [], braces {}, and parentheses () are properly matched
+- Use only standard ASCII characters in labels
+- Keep arrow syntax simple: --> or ==>
+- No trailing semicolons or extra characters after node definitions
+- Example of GOOD syntax: A["Clean Label"] --> B{Simple Question?}
+- Example of BAD syntax: A[Label with <bad> chars] --> B{Question (with unquoted parens)}
+
 Response format (JSON only):
 {
   "text": "Clear explanation of the concept...",
@@ -54,7 +153,7 @@ Response format (JSON only):
 }
 
 Chart guidelines:
-- Use meaningful node labels that explain the concept
+- Use meaningful node labels that explain the concept (but keep them clean and simple)
 - Add styling with fill colors and stroke properties
 - For processes: use flowchart TD or LR
 - For sequences: use sequenceDiagram
@@ -64,6 +163,13 @@ Chart guidelines:
 - Use decision nodes {} for branching logic
 - Use action nodes [] for processes
 - Use different colors to highlight key concepts
+- ALWAYS validate that your Mermaid syntax is clean and parseable
+
+Label cleaning examples:
+- Instead of: A[Greenhouse gases (CO2, Methane etc.)]
+- Use: A["Greenhouse gases - CO2 Methane etc"]
+- Instead of: B{Is temperature > 25°C?}
+- Use: B{"Is temperature above 25C?"}
 
 Color suggestions:
 - Blue (#e3f2fd, #1976d2): Start/Input
@@ -72,7 +178,7 @@ Color suggestions:
 - Green (#e8f5e8, #388e3c): Success/Results
 - Red (#ffebee, #c62828): Errors/Warnings
 
-Remember: Create educational, clear flowcharts that help explain the concept visually.`;
+Remember: Create educational, clear flowcharts with CLEAN, PARSEABLE syntax that help explain the concept visually.`;
   }
 
   async generateAnswer(question: string): Promise<LLMResponse> {
@@ -81,7 +187,7 @@ Remember: Create educational, clear flowcharts that help explain the concept vis
 
 Question: ${question}
 
-Remember: Respond with ONLY the JSON object, no other text.`;
+Remember: Respond with ONLY the JSON object, no other text. Ensure all Mermaid syntax is clean and parseable.`;
 
       const result = await this.model.generateContent(prompt);
       const response = result.response;
@@ -100,7 +206,7 @@ Remember: Respond with ONLY the JSON object, no other text.`;
         throw new Error('Invalid JSON response from Gemini');
       }
 
-      return this.validateResponse(parsedResponse, question);
+      return this.validateAndSanitizeResponse(parsedResponse, question);
 
     } catch (error) {
       console.error('Gemini API error:', error);
@@ -108,7 +214,7 @@ Remember: Respond with ONLY the JSON object, no other text.`;
     }
   }
 
-  private validateResponse(response: LLMResponse, question: string): LLMResponse {
+  private validateAndSanitizeResponse(response: LLMResponse, question: string): LLMResponse {
     // Ensure text exists
     if (!response.text || typeof response.text !== 'string') {
       response.text = `Here's an explanation of your question about ${question}.`;
@@ -130,6 +236,9 @@ Remember: Respond with ONLY the JSON object, no other text.`;
       
       if (!response.visualization.chartDefinition) {
         response.visualization.chartDefinition = this.getDefaultChart();
+      } else {
+        // SANITIZE THE CHART DEFINITION FROM LLM
+        response.visualization.chartDefinition = sanitizeChartDefinition(response.visualization.chartDefinition);
       }
 
       if (!response.visualization.theme) {
@@ -142,7 +251,7 @@ Remember: Respond with ONLY the JSON object, no other text.`;
 
   private getDefaultChart(): string {
     return `flowchart TD
-    A[Question Asked] --> B{Understanding Level?}
+    A[Question Asked] --> B{"Understanding Level?"}
     B -->|Basic| C[Simple Explanation]
     B -->|Advanced| D[Detailed Analysis]
     C --> E[Provide Examples]
@@ -174,18 +283,18 @@ Remember: Respond with ONLY the JSON object, no other text.`;
         id: `fallback_${Date.now()}`,
         title: `Understanding: ${question.substring(0, 40)}...`,
         description: 'A flowchart breaking down the key concepts and relationships',
-        chartDefinition: fallbackChart,
+        chartDefinition: sanitizeChartDefinition(fallbackChart), // SANITIZE FALLBACK TOO
         theme: 'default'
       }
     };
   }
 
   private generateFallbackChart(type: string, question: string): string {
-    const shortQuestion = question.substring(0, 20) + '...';
+    const shortQuestion = question.substring(0, 20).replace(/[<>&"'`]/g, ''); // Clean question
     
     if (type === 'sequence') {
       return `flowchart LR
-        A[Start: ${shortQuestion}] --> B[Analyze Question]
+        A["Start: ${shortQuestion}..."] --> B[Analyze Question]
         B --> C[Gather Information]
         C --> D[Process Data] 
         D --> E[Generate Insights]
@@ -202,13 +311,13 @@ Remember: Respond with ONLY the JSON object, no other text.`;
         Understanding --> Response
         Response --> [*]
         
-        Question: ${shortQuestion}
+        Question: ${shortQuestion}...
         Analysis: Processing Information
         Understanding: Concept Clarity
         Response: Final Answer`;
     } else {
       return `flowchart TD
-        A[${shortQuestion}] --> B{Type of Question?}
+        A["${shortQuestion}..."] --> B{"Type of Question?"}
         B -->|Factual| C[Research Facts]
         B -->|Conceptual| D[Explain Concept]
         B -->|Process| E[Show Steps]
