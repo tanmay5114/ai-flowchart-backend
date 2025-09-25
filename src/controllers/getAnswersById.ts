@@ -8,7 +8,7 @@ import { PrismaClient } from "../generated/prisma";
 const prisma = new PrismaClient();
 
 /**
- * GET /api/answers/:id - Fetch both explanation text and visualization for an answer
+ * GET /api/answers/:id - Fetch both explanation text and chart for an answer
  */
 export const getAnswerById: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -29,18 +29,7 @@ export const getAnswerById: RequestHandler = asyncHandler(async (req: Request, r
                         createdAt: true
                     }
                 },
-                visualization: {
-                    include: {
-                        frames: {
-                            include: {
-                                objects: true
-                            },
-                            orderBy: {
-                                timestamp: 'asc'
-                            }
-                        }
-                    }
-                }
+                chart: true
             }
         });
 
@@ -48,27 +37,18 @@ export const getAnswerById: RequestHandler = asyncHandler(async (req: Request, r
             throw new ApiError(404, "Answer not found");
         }
 
-        // Format the response according to your new frame-based spec
+        // Format the response for Mermaid charts
         const responseData = {
             id: answer.id,
             questionId: answer.questionId,
             question: answer.question.questionText,
             text: answer.answerText,
-            visualization: answer.visualization ? {
-                id: answer.visualization.visualizationId || answer.visualization.id,
-                title: answer.visualization.title,
-                description: answer.visualization.description,
-                duration: answer.visualization.duration,
-                fps: answer.visualization.fps,
-                metadata: answer.visualization.metadata,
-                frames: answer.visualization.frames.map(frame => ({
-                    timestamp: frame.timestamp,
-                    objects: frame.objects.map(obj => ({
-                        id: obj.objectId,
-                        type: obj.type,
-                        properties: obj.properties
-                    }))
-                }))
+            chart: answer.chart ? {
+                id: answer.chart.chartId,
+                title: answer.chart.title,
+                description: answer.chart.description,
+                chartDefinition: answer.chart.chartDefinition,
+                theme: answer.chart.theme
             } : null,
             createdAt: answer.createdAt
         };
@@ -88,7 +68,7 @@ export const getAnswerById: RequestHandler = asyncHandler(async (req: Request, r
  * GET /api/answers - Get all answers with optional filters
  */
 export const getAllAnswers: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
-    const { userId, page = 1, limit = 20, hasVisualization } = req.query;
+    const { userId, page = 1, limit = 20, hasChart } = req.query;
 
     const pageNum = parseInt(page as string);
     const limitNum = Math.min(parseInt(limit as string), 50); // Max 50 items per page
@@ -104,11 +84,11 @@ export const getAllAnswers: RequestHandler = asyncHandler(async (req: Request, r
             };
         }
 
-        // Filter by whether answer has visualization
-        if (hasVisualization === 'true') {
-            whereClause.visualization = { isNot: null };
-        } else if (hasVisualization === 'false') {
-            whereClause.visualization = null;
+        // Filter by whether answer has chart
+        if (hasChart === 'true') {
+            whereClause.chart = { isNot: null };
+        } else if (hasChart === 'false') {
+            whereClause.chart = null;
         }
 
         const answers = await prisma.answer.findMany({
@@ -121,11 +101,11 @@ export const getAllAnswers: RequestHandler = asyncHandler(async (req: Request, r
                         userId: true
                     }
                 },
-                visualization: {
+                chart: {
                     select: {
-                        id: true,
-                        duration: true,
-                        fps: true
+                        chartId: true,
+                        title: true,
+                        theme: true
                     }
                 }
             },
@@ -148,7 +128,8 @@ export const getAllAnswers: RequestHandler = asyncHandler(async (req: Request, r
             questionId: answer.questionId,
             question: answer.question.questionText,
             userId: answer.question.userId,
-            hasVisualization: !!answer.visualization,
+            hasChart: !!answer.chart,
+            chartTitle: answer.chart?.title || null,
             textPreview: answer.answerText.substring(0, 150) + (answer.answerText.length > 150 ? '...' : ''),
             createdAt: answer.createdAt
         }));
@@ -171,9 +152,9 @@ export const getAllAnswers: RequestHandler = asyncHandler(async (req: Request, r
 });
 
 /**
- * GET /api/answers/:id/visualization - Get only the visualization data
+ * GET /api/answers/:id/chart - Get only the chart data
  */
-export const getVisualizationById: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
+export const getChartById: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
     if (!id) {
@@ -184,18 +165,7 @@ export const getVisualizationById: RequestHandler = asyncHandler(async (req: Req
         const answer = await prisma.answer.findUnique({
             where: { id },
             include: {
-                visualization: {
-                    include: {
-                        frames: {
-                            include: {
-                                objects: true
-                            },
-                            orderBy: {
-                                timestamp: 'asc'
-                            }
-                        }
-                    }
-                }
+                chart: true
             }
         });
 
@@ -203,37 +173,152 @@ export const getVisualizationById: RequestHandler = asyncHandler(async (req: Req
             throw new ApiError(404, "Answer not found");
         }
 
-        if (!answer.visualization) {
-            throw new ApiError(404, "Visualization not found for this answer");
+        if (!answer.chart) {
+            throw new ApiError(404, "Chart not found for this answer");
         }
 
-        // Format visualization according to your new frame-based spec
-        const visualizationData = {
-            id: answer.visualization.visualizationId || answer.visualization.id,
-            title: answer.visualization.title,
-            description: answer.visualization.description,
-            duration: answer.visualization.duration,
-            fps: answer.visualization.fps,
-            metadata: answer.visualization.metadata,
-            frames: answer.visualization.frames.map(frame => ({
-                timestamp: frame.timestamp,
-                objects: frame.objects.map(obj => ({
-                    id: obj.objectId,
-                    type: obj.type,
-                    properties: obj.properties
-                }))
-            }))
+        // Return chart data
+        const chartData = {
+            id: answer.chart.chartId,
+            title: answer.chart.title,
+            description: answer.chart.description,
+            chartDefinition: answer.chart.chartDefinition,
+            theme: answer.chart.theme,
+            createdAt: answer.chart.createdAt
         };
 
-        res.status(200).json(new ApiResponse(200, "Visualization fetched successfully", {
-            visualization: visualizationData
+        res.status(200).json(new ApiResponse(200, "Chart fetched successfully", {
+            chart: chartData
         }, true));
 
     } catch (error) {
         if (error instanceof ApiError) {
             throw error;
         }
-        console.error('Error fetching visualization:', error);
-        throw new ApiError(500, "Failed to fetch visualization");
+        console.error('Error fetching chart:', error);
+        throw new ApiError(500, "Failed to fetch chart");
+    }
+});
+
+/**
+ * GET /api/charts/:chartId - Get chart by chart ID directly
+ */
+export const getChartByChartId: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
+    const { chartId } = req.params;
+
+    if (!chartId) {
+        throw new ApiError(400, "Chart ID is required");
+    }
+
+    try {
+        const chart = await prisma.chart.findUnique({
+            where: { chartId },
+            include: {
+                answer: {
+                    include: {
+                        question: {
+                            select: {
+                                questionText: true,
+                                userId: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!chart) {
+            throw new ApiError(404, "Chart not found");
+        }
+
+        const responseData = {
+            id: chart.chartId,
+            title: chart.title,
+            description: chart.description,
+            chartDefinition: chart.chartDefinition,
+            theme: chart.theme,
+            createdAt: chart.createdAt,
+            context: {
+                questionText: chart.answer.question.questionText,
+                answerText: chart.answer.answerText,
+                userId: chart.answer.question.userId
+            }
+        };
+
+        res.status(200).json(new ApiResponse(200, "Chart fetched successfully", responseData, true));
+
+    } catch (error) {
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        console.error('Error fetching chart by chartId:', error);
+        throw new ApiError(500, "Failed to fetch chart");
+    }
+});
+
+/**
+ * GET /api/charts - Get all charts with optional filters
+ */
+export const getAllCharts: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
+    const { theme, page = 1, limit = 20 } = req.query;
+
+    const pageNum = parseInt(page as string);
+    const limitNum = Math.min(parseInt(limit as string), 50);
+    const skip = (pageNum - 1) * limitNum;
+
+    try {
+        const whereClause: any = {};
+        
+        if (theme) {
+            whereClause.theme = theme as string;
+        }
+
+        const charts = await prisma.chart.findMany({
+            where: whereClause,
+            include: {
+                answer: {
+                    include: {
+                        question: {
+                            select: {
+                                questionText: true,
+                                userId: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            },
+            skip,
+            take: limitNum
+        });
+
+        const totalCount = await prisma.chart.count({ where: whereClause });
+        const totalPages = Math.ceil(totalCount / limitNum);
+
+        const formattedCharts = charts.map(chart => ({
+            id: chart.chartId,
+            title: chart.title,
+            description: chart.description,
+            theme: chart.theme,
+            questionPreview: chart.answer.question.questionText.substring(0, 100) + '...',
+            createdAt: chart.createdAt
+        }));
+
+        res.status(200).json(new ApiResponse(200, "Charts fetched successfully", {
+            charts: formattedCharts,
+            pagination: {
+                currentPage: pageNum,
+                totalPages,
+                totalCount,
+                hasNextPage: pageNum < totalPages,
+                hasPrevPage: pageNum > 1
+            }
+        }, true));
+
+    } catch (error) {
+        console.error('Error fetching charts:', error);
+        throw new ApiError(500, "Failed to fetch charts");
     }
 });

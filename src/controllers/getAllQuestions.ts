@@ -88,7 +88,7 @@ export const getAllQuestions: RequestHandler = asyncHandler(async (req: Request,
 });
 
 /**
- * GET /api/questions/:id - Get specific question with its answer
+ * GET /api/questions/:id - Get specific question with its answer and chart
  */
 export const getQuestionById: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -103,18 +103,7 @@ export const getQuestionById: RequestHandler = asyncHandler(async (req: Request,
             include: {
                 answer: {
                     include: {
-                        visualization: {
-                            include: {
-                                frames: {
-                                    include: {
-                                        objects: true
-                                    },
-                                    orderBy: {
-                                        timestamp: 'asc'
-                                    }
-                                }
-                            }
-                        }
+                        chart: true
                     }
                 },
                 user: {
@@ -140,7 +129,13 @@ export const getQuestionById: RequestHandler = asyncHandler(async (req: Request,
                 answer: question.answer ? {
                     id: question.answer.id,
                     text: question.answer.answerText,
-                    visualization: question.answer.visualization,
+                    chart: question.answer.chart ? {
+                        id: question.answer.chart.chartId,
+                        title: question.answer.chart.title,
+                        description: question.answer.chart.description,
+                        chartDefinition: question.answer.chart.chartDefinition,
+                        theme: question.answer.chart.theme
+                    } : null,
                     createdAt: question.answer.createdAt
                 } : null,
                 createdAt: question.createdAt

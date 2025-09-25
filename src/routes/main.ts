@@ -2,7 +2,7 @@ import { Router } from "express";
 import { submitQuestion } from "../controllers/submitQuestion";
 import { getStreamStatus, sendTestMessage, streamEvents } from "../controllers/sseController";
 import { getAllQuestions, getQuestionById } from "../controllers/getAllQuestions";
-import { getAnswerById, getAllAnswers, getVisualizationById } from "../controllers/getAnswersById";
+import { getAnswerById, getAllAnswers } from "../controllers/getAnswersById";
 import { getUserById, getAllUsers, createAUser } from "../controllers/user";
 
 const app: Router = Router();
@@ -15,7 +15,7 @@ app.get('/api/questions/:id', getQuestionById);      // Get specific question wi
 // Answer Routes  
 app.get('/api/answers/:id', getAnswerById);          // Get answer with full visualization
 app.get('/api/answers', getAllAnswers);              // Get all answers with pagination/filters
-app.get('/api/answers/:id/visualization', getVisualizationById); // Get only visualization data
+// app.get('/api/answers/:id/visualization', getVisualizationById); // Get only visualization data
 
 // User Routes
 app.get('/api/users/:id', getUserById);              // Get user profile with stats

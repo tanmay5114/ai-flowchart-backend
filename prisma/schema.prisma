@@ -37,12 +37,12 @@ model Question {
 }
 
 model Answer {
-  id             String         @id @default(cuid())
-  questionId     String         @unique
-  answerText     String
-  visualization  Visualization?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id         String   @id @default(cuid())
+  questionId String   @unique
+  answerText String
+  chart      Chart?   // Changed from visualization to chart
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relations
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
@@ -50,34 +50,19 @@ model Answer {
   @@map("answers")
 }
 
-model Visualization {
-  id             String   @id @default(cuid())
-  visualizationId String?
-  title          String?
-  description    String?
-  duration       Int
-  fps            Int
-  metadata       Json?
-  frames         Frame[]
-  answerId       String   @unique
-  answer         Answer   @relation(fields: [answerId], references: [id])
-}
+model Chart {
+  id              String   @id @default(cuid())
+  chartId         String   @unique
+  title           String
+  description     String
+  chartDefinition String   @db.Text // Mermaid chart definition string
+  theme           String   @default("default")
+  answerId        String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-model Frame {
-  id               String              @id @default(cuid())
-  timestamp        Int
-  orderIndex       Int
-  objects          VisualizationObject[]
-  visualizationId  String
-  visualization    Visualization       @relation(fields: [visualizationId], references: [id])
-}
+  // Relations
+  answer Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
 
-model VisualizationObject {
-  id         String @id @default(cuid())
-  objectId   String
-  type       String
-  properties Json
-  orderIndex Int
-  frameId    String
-  frame      Frame  @relation(fields: [frameId], references: [id])
+  @@map("charts")
 }

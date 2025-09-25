@@ -3,7 +3,7 @@ import { asyncHandler } from "../utils/AsyncHandler";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { PrismaClient } from "../generated/prisma";
-import { llmService, LLMResponse, Frame, VisualizationObject, VisualizationData } from "../services/llm";
+import { llmService, LLMResponse, MermaidVisualization } from "../services/llm";
 import { sseService } from "../services/sse";
 
 const prisma = new PrismaClient();
@@ -94,11 +94,10 @@ async function processQuestionInBackground(questionId: string, questionText: str
         // 1. Generate answer using Gemini
         const llmResponse: LLMResponse = await llmService.generateAnswer(questionText);
 
-        // 2. Save answer and visualization to database
-        const answer = await saveAnswerWithVisualization(questionId, llmResponse);
+        // 2. Save answer and chart to database
+        const answer = await saveAnswerWithChart(questionId, llmResponse);
 
-        console.log("this is the final answer getting broadcasted", answer );
-        console.log("this is the frames ", JSON.stringify(answer.visualization?.frames));
+        console.log("Broadcasting answer with chart:", answer.id);
 
         // 3. Update question status
         await prisma.question.update({
@@ -112,21 +111,12 @@ async function processQuestionInBackground(questionId: string, questionText: str
                 id: answer.id,
                 questionId: answer.questionId,
                 text: answer.answerText,
-                visualization: answer.visualization ? {
-                    id: answer.visualization.visualizationId || answer.visualization.id,
-                    title: answer.visualization.title,
-                    description: answer.visualization.description,
-                    duration: answer.visualization.duration,
-                    fps: answer.visualization.fps,
-                    metadata: answer.visualization.metadata,
-                    frames: answer.visualization.frames.map(frame => ({
-                        timestamp: frame.timestamp,
-                        objects: frame.objects.map(obj => ({
-                            id: obj.objectId,
-                            type: obj.type,
-                            properties: obj.properties
-                        }))
-                    }))
+                chart: answer.chart ? {
+                    id: answer.chart.chartId || answer.chart.id,
+                    title: answer.chart.title,
+                    description: answer.chart.description,
+                    chartDefinition: answer.chart.chartDefinition,
+                    theme: answer.chart.theme
                 } : null,
                 createdAt: answer.createdAt
             }
@@ -158,62 +148,119 @@ async function processQuestionInBackground(questionId: string, questionText: str
 }
 
 /**
- * Save answer and visualization data to database
+ * Save answer and chart data to database
  */
-async function saveAnswerWithVisualization(questionId: string, llmResponse: LLMResponse) {
+async function saveAnswerWithChart(questionId: string, llmResponse: LLMResponse) {
     const answerData: any = {
         questionId,
         answerText: llmResponse.text
     };
 
-    // Add visualization if provided
+    // Add chart if provided
     if (llmResponse.visualization) {
-        const viz: VisualizationData = llmResponse.visualization;
+        const chart: MermaidVisualization = llmResponse.visualization;
         
-        answerData.visualization = {
+        answerData.chart = {
             create: {
-                visualizationId: viz.id,
-                title: viz.title,
-                description: viz.description,
-                duration: viz.duration,
-                fps: viz.fps,
-                metadata: viz.metadata || null,
-                frames: {
-                    create: viz.frames.map((frame: Frame, frameIndex: number) => ({
-                        timestamp: frame.timestamp,
-                        orderIndex: frameIndex,
-                        objects: {
-                            create: frame.objects.map((obj: VisualizationObject, objIndex: number) => ({
-                                objectId: obj.id,
-                                type: obj.type,
-                                properties: obj.properties,
-                                orderIndex: objIndex
-                            }))
-                        }
-                    }))
-                }
+                chartId: chart.id,
+                title: chart.title,
+                description: chart.description,
+                chartDefinition: chart.chartDefinition,
+                theme: chart.theme || 'default'
             }
         };
     }
 
-    // Save with all nested relationships
+    // Save with chart relationship
     const answer = await prisma.answer.create({
         data: answerData,
         include: {
-            visualization: {
-                include: {
-                    frames: {
-                        include: {
-                            objects: true
-                        },
-                        orderBy: {
-                            timestamp: 'asc'
-                        }
-                    }
-                }
-            }
+            chart: true
         }
     });
 
     return answer;
 }
+/**
+ * Get conversation history
+ */
+export const getQuestionHistory: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
+    try {
+        const questions = await prisma.question.findMany({
+            include: {
+                answer: { // Changed from 'answers' to 'answer' (one-to-one relationship)
+                    include: {
+                        chart: true
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            },
+            take: 50 // Limit to recent 50 questions
+        });
+
+        const formattedQuestions = questions.map(q => ({
+            id: q.id,
+            content: q.questionText,
+            timestamp: q.createdAt,
+            status: q.status,
+            answer: q.answer ? { // Changed from 'answers' array to single 'answer'
+                id: q.answer.id,
+                questionId: q.answer.questionId,
+                content: q.answer.answerText,
+                timestamp: q.answer.createdAt,
+                chart: q.answer.chart ? {
+                    id: q.answer.chart.chartId,
+                    title: q.answer.chart.title,
+                    description: q.answer.chart.description,
+                    chartDefinition: q.answer.chart.chartDefinition,
+                    theme: q.answer.chart.theme
+                } : null
+            } : null
+        }));
+
+        res.status(200).json(new ApiResponse(200, "Question history retrieved", {
+            questions: formattedQuestions
+        }, true));
+
+    } catch (error) {
+        console.error('Error getting question history:', error);
+        throw new ApiError(500, "Failed to retrieve question history");
+    }
+});
+/**
+ * Get specific chart by ID
+ */
+export const getChart: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
+    const { chartId } = req.params;
+
+    if (!chartId) {
+        throw new ApiError(400, "Chart ID is required");
+    }
+
+    try {
+        const chart = await prisma.chart.findUnique({
+            where: { chartId }
+        });
+
+        if (!chart) {
+            throw new ApiError(404, "Chart not found");
+        }
+
+        res.status(200).json(new ApiResponse(200, "Chart retrieved", {
+            chart: {
+                id: chart.chartId,
+                title: chart.title,
+                description: chart.description,
+                chartDefinition: chart.chartDefinition,
+                theme: chart.theme,
+                createdAt: chart.createdAt
+            }
+        }, true));
+
+    } catch (error) {
+        console.error('Error getting chart:', error);
+        throw new ApiError(500, "Failed to retrieve chart");
+    }
+});
