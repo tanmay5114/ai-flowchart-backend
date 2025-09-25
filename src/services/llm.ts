@@ -16,7 +16,7 @@ export interface LLMResponse {
   visualization?: MermaidVisualization;
 }
 
-// Enhanced sanitization function
+// Enhanced sanitization function with better error handling
 const sanitizeChartDefinition = (definition: string): string => {
   console.log('🧹 Sanitizing definition (length):', definition.length);
   console.log('🧹 Raw definition:', JSON.stringify(definition));
@@ -35,23 +35,55 @@ const sanitizeChartDefinition = (definition: string): string => {
   // Remove trailing semicolons at end of lines
   sanitized = sanitized.replace(/;(\s*$)/gm, '$1');
   
-  // Handle problematic characters that can cause parsing issues
+  // CRITICAL: Fix nested brackets and incomplete arrows first
   sanitized = sanitized
-    // Remove or escape problematic punctuation in labels
+    // Fix nested brackets like ["[Monitor Analyze]..."] -> ["Monitor Analyze..."]
+    .replace(/\["\s*\[([^\]]*)\]([^"]*?)"\s*\]/g, '["$1$2"]')
+    .replace(/\[\s*\[([^\]]*)\]([^\]]*?)\s*\]/g, '["$1$2"]')
+    
+    // Fix incomplete arrows (-- without >) 
+    .replace(/(\s+)--(\s+)(?!>|-)([A-Za-z0-9_])/g, '$1-->$3')
+    .replace(/(\w|]|})(\s*)--(\s*)([A-Za-z0-9_])/g, '$1$2-->$3$4')
+    
+    // Fix malformed arrows with extra dashes
+    .replace(/---+>/g, '-->')
+    .replace(/--\s*-+>/g, '-->')
+    
+    // Remove lines that look completely malformed
+    .split('\n')
+    .filter(line => {
+      const trimmedLine = line.trim();
+      // Remove lines with unmatched quotes or brackets that can't be fixed
+      if (trimmedLine.includes('"') && (trimmedLine.match(/"/g) || []).length % 2 !== 0) {
+        console.warn('🚨 Removing line with unmatched quotes:', trimmedLine);
+        return false;
+      }
+      // Remove lines with incomplete arrow syntax that we couldn't fix
+      if (trimmedLine.match(/--\s*$/)) {
+        console.warn('🚨 Removing line with incomplete arrow:', trimmedLine);
+        return false;
+      }
+      return true;
+    })
+    .join('\n')
+    
+    // Handle problematic characters in labels
     .replace(/([A-Za-z0-9_]+)\s*\{\s*([^}]*[<>&"'`]+[^}]*)\s*\}/g, (match, nodeId, label) => {
       const cleanLabel = label
         .replace(/["'`]/g, '') // Remove quotes
         .replace(/[<>&]/g, '') // Remove HTML-like characters
+        .replace(/\[[^\]]*\]/g, '') // Remove any remaining nested brackets
         .replace(/\s+/g, ' ') // Normalize whitespace
         .trim();
-      return `${nodeId}{${cleanLabel}}`;
+      return `${nodeId}{"${cleanLabel}"}`;
     })
     
     // Handle square bracket labels with problematic characters
-    .replace(/\[([^[\]]*[<>&"'`]+[^[\]]*)\]/g, (match, label) => {
+    .replace(/\[([^[\]]*[<>&"'`\[\]]+[^[\]]*)\]/g, (match, label) => {
       const cleanLabel = label
         .replace(/["'`]/g, '') // Remove quotes
         .replace(/[<>&]/g, '') // Remove HTML-like characters
+        .replace(/\[[^\]]*\]/g, '') // Remove nested brackets
         .replace(/\s+/g, ' ') // Normalize whitespace
         .trim();
       return `["${cleanLabel}"]`;
@@ -72,17 +104,18 @@ const sanitizeChartDefinition = (definition: string): string => {
     // Remove any stray control characters
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     
-    // Fix common arrow syntax issues
+    // Comprehensive arrow syntax fixes
     .replace(/--+>/g, '-->')
-    .replace(/-+>/g, '-->')
+    .replace(/-{2,}>/g, '-->')
     .replace(/=+>/g, '==>')
+    .replace(/={2,}>/g, '==>')
     
     // Ensure proper spacing around arrows
-    .replace(/(\w)\s*-->\s*(\w)/g, '$1 --> $2')
-    .replace(/(\w)\s*==>\s*(\w)/g, '$1 ==> $2')
+    .replace(/(\w|\]|\})\s*-->\s*(\w)/g, '$1 --> $2')
+    .replace(/(\w|\]|\})\s*==>\s*(\w)/g, '$1 ==> $2')
     
     // Handle node definitions that might have syntax issues
-    .replace(/([A-Za-z0-9_]+)(\{[^}]*\}|\[[^\]]*\]|\([^)]*\))\s*([^-=\s][^-=\n\r]*?)(\s*(?:-->|==>|\n|\r|$))/g, 
+    .replace(/([A-Za-z0-9_]+)(\{[^}]*\}|\[[^\]]*\]|\([^)]*\))\s*([^-=\s\n\r][^-=\n\r]*?)(\s*(?:-->|==>|\n|\r|$))/g, 
       (match, nodeId, shape, extra, ending) => {
         if (extra.trim() && !extra.match(/^(-->|==>)/)) {
           console.warn(`⚠️ Removing extra content after node ${nodeId}: "${extra.trim()}"`);
@@ -91,7 +124,7 @@ const sanitizeChartDefinition = (definition: string): string => {
         return match;
       })
     
-    // Normalize line endings and clean up
+    // Final cleanup: normalize line endings and remove empty lines
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     .split('\n')
@@ -100,8 +133,24 @@ const sanitizeChartDefinition = (definition: string): string => {
     .join('\n')
     .trim();
   
-  console.log('✅ Sanitized definition:', JSON.stringify(sanitized));
-  return sanitized;
+  // Final validation check
+  const lines = sanitized.split('\n');
+  const validatedLines = lines.filter((line, index) => {
+    // Check for still problematic patterns
+    if (line.match(/\["\s*\[/)) {
+      console.warn(`🚨 Line ${index + 1} still has nested brackets, removing:`, line);
+      return false;
+    }
+    if (line.match(/--\s*$/)) {
+      console.warn(`🚨 Line ${index + 1} has incomplete arrow, removing:`, line);
+      return false;
+    }
+    return true;
+  });
+  
+  const finalSanitized = validatedLines.join('\n');
+  console.log('✅ Sanitized definition:', JSON.stringify(finalSanitized));
+  return finalSanitized;
 };
 
 class LLMService {
