@@ -112,7 +112,7 @@ async function processQuestionInBackground(questionId: string, questionText: str
                 questionId: answer.questionId,
                 text: answer.answerText,
                 chart: answer.chart ? {
-                    id: answer.chart.chartId || answer.chart.id,
+                    id: answer.chart.id,
                     title: answer.chart.title,
                     description: answer.chart.description,
                     chartDefinition: answer.chart.chartDefinition,
@@ -159,10 +159,9 @@ async function saveAnswerWithChart(questionId: string, llmResponse: LLMResponse)
     // Add chart if provided
     if (llmResponse.visualization) {
         const chart: MermaidVisualization = llmResponse.visualization;
-        
         answerData.chart = {
             create: {
-                chartId: chart.id,
+                id: chart.id,
                 title: chart.title,
                 description: chart.description,
                 chartDefinition: chart.chartDefinition,
@@ -211,7 +210,7 @@ export const getQuestionHistory: RequestHandler = asyncHandler(async (req: Reque
                 content: q.answer.answerText,
                 timestamp: q.answer.createdAt,
                 chart: q.answer.chart ? {
-                    id: q.answer.chart.chartId,
+                    id: q.answer.chart.id,
                     title: q.answer.chart.title,
                     description: q.answer.chart.description,
                     chartDefinition: q.answer.chart.chartDefinition,
@@ -250,7 +249,7 @@ export const getChart: RequestHandler = asyncHandler(async (req: Request, res: R
 
         res.status(200).json(new ApiResponse(200, "Chart retrieved", {
             chart: {
-                id: chart.chartId,
+                id: chart.id,
                 title: chart.title,
                 description: chart.description,
                 chartDefinition: chart.chartDefinition,

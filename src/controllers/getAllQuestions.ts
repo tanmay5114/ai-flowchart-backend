@@ -130,7 +130,7 @@ export const getQuestionById: RequestHandler = asyncHandler(async (req: Request,
                     id: question.answer.id,
                     text: question.answer.answerText,
                     chart: question.answer.chart ? {
-                        id: question.answer.chart.chartId,
+                        id: question.answer.chart.id,
                         title: question.answer.chart.title,
                         description: question.answer.chart.description,
                         chartDefinition: question.answer.chart.chartDefinition,

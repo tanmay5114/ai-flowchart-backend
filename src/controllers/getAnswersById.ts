@@ -44,7 +44,7 @@ export const getAnswerById: RequestHandler = asyncHandler(async (req: Request, r
             question: answer.question.questionText,
             text: answer.answerText,
             chart: answer.chart ? {
-                id: answer.chart.chartId,
+                id: answer.chart.id,
                 title: answer.chart.title,
                 description: answer.chart.description,
                 chartDefinition: answer.chart.chartDefinition,
@@ -103,7 +103,7 @@ export const getAllAnswers: RequestHandler = asyncHandler(async (req: Request, r
                 },
                 chart: {
                     select: {
-                        chartId: true,
+                        id: true,
                         title: true,
                         theme: true
                     }
@@ -179,7 +179,7 @@ export const getChartById: RequestHandler = asyncHandler(async (req: Request, re
 
         // Return chart data
         const chartData = {
-            id: answer.chart.chartId,
+            id: answer.chart.id,
             title: answer.chart.title,
             description: answer.chart.description,
             chartDefinition: answer.chart.chartDefinition,
@@ -242,11 +242,11 @@ export const getAllCharts: RequestHandler = asyncHandler(async (req: Request, re
         const totalPages = Math.ceil(totalCount / limitNum);
 
         const formattedCharts = charts.map(chart => ({
-            id: chart.chartId,
+            id: chart.id,
             title: chart.title,
             description: chart.description,
             theme: chart.theme,
-            questionPreview: chart.answer.question.questionText.substring(0, 100) + '...',
+            questionPreview: chart.answer?.question.questionText.substring(0, 100) + '...',
             createdAt: chart.createdAt
         }));
 

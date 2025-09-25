@@ -40,13 +40,12 @@ model Answer {
   id         String   @id @default(cuid())
   questionId String   @unique
   answerText String
-  chartId    String?  @unique  // Add this field for the foreign key
-  chart      Chart?   @relation(fields: [chartId], references: [id]) // Complete the relation
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   // Relations
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  chart      Chart?
 
   @@map("answers")
 }
@@ -62,7 +61,6 @@ model Chart {
   updatedAt       DateTime @updatedAt
 
   // Relations
-  answer Answer? 
-
+  answer Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
   @@map("charts")
 }
