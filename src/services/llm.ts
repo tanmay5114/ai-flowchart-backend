@@ -32,44 +32,160 @@ For each question, provide:
 1. A clear, educational explanation of the concept (3-5 sentences)
 2. A Mermaid flowchart using ONLY the safe templates provided below
 
-MANDATORY: Use ONLY these exact templates and substitute the labels:
+MANDATORY: Use ONLY these exact templates and substitute the labels. Choose the template that best fits the concept:
 
-TEMPLATE 1 - Simple Process (for step-by-step explanations):
+TEMPLATE 1 - Linear Process (for step-by-step explanations):
 flowchart TD
-    A[Step 1 Label] --> B[Step 2 Label]
-    B --> C[Step 3 Label]
-    C --> D[Step 4 Label]
-    D --> E[Final Step Label]
+    A[Step 1] --> B[Step 2]
+    B --> C[Step 3]
+    C --> D[Step 4]
+    D --> E[Step 5]
+    E --> F[Final Result]
     
     style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style E fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style F fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C fill:#fff3e0,stroke:#f57c00,stroke-width:2px
 
-TEMPLATE 2 - Decision Process (for yes/no or choice explanations):
+TEMPLATE 2 - Decision Tree (for choice-based explanations):
 flowchart TD
-    A[Starting Point] --> B{Key Question}
-    B -->|Option 1| C[Result A]
-    B -->|Option 2| D[Result B]
-    C --> E[Final Outcome]
-    D --> E
+    A[Starting Point] --> B{Primary Decision}
+    B -->|Option A| C[Path A Result]
+    B -->|Option B| D{Secondary Decision}
+    D -->|Choice 1| E[Outcome 1]
+    D -->|Choice 2| F[Outcome 2]
+    C --> G[Final State]
+    E --> G
+    F --> G
     
     style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style E fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style G fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style B fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style D fill:#fff3e0,stroke:#f57c00,stroke-width:2px
 
-TEMPLATE 3 - Cycle Process (for circular or repeating processes):
+TEMPLATE 3 - Parallel Processing (for multiple simultaneous processes):
 flowchart TD
-    A[Phase 1] --> B[Phase 2]
-    B --> C[Phase 3]
-    C --> D[Phase 4]
-    D --> A
+    A[Input Source] --> B[Process Split]
+    B --> C[Branch 1]
+    B --> D[Branch 2] 
+    B --> E[Branch 3]
+    C --> F[Result 1]
+    D --> G[Result 2]
+    E --> H[Result 3]
+    F --> I[Combine Results]
+    G --> I
+    H --> I
+    I --> J[Final Output]
     
     style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style J fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style I fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+
+TEMPLATE 4 - Circular/Feedback Process (for cycles and loops):
+flowchart TD
+    A[Initialize] --> B[Action 1]
+    B --> C[Action 2]
+    C --> D[Action 3]
+    D --> E{Check Condition}
+    E -->|Continue| F[Process More]
+    E -->|Complete| G[Final State]
+    F --> B
+    G --> H[End Process]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style H fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style E fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style G fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+
+TEMPLATE 5 - Hierarchical Structure (for classification or breakdown):
+flowchart TD
+    A[Main Concept] --> B[Category 1]
+    A --> C[Category 2]
+    A --> D[Category 3]
+    B --> E[Sub Item 1A]
+    B --> F[Sub Item 1B]
+    C --> G[Sub Item 2A]
+    C --> H[Sub Item 2B]
+    D --> I[Sub Item 3A]
+    D --> J[Sub Item 3B]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style B fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style C fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style D fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+
+TEMPLATE 6 - Input-Process-Output with Feedback (for system analysis):
+flowchart TD
+    A[Input Data] --> B[Validation]
+    B --> C{Valid Input}
+    C -->|Yes| D[Main Processing]
+    C -->|No| E[Error Handling]
+    E --> F[Correction Process]
+    F --> B
+    D --> G[Generate Output]
+    G --> H[Quality Check]
+    H --> I{Quality OK}
+    I -->|Yes| J[Deliver Result]
+    I -->|No| K[Refinement]
+    K --> D
+    J --> L[Success State]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style L fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style E fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style J fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+
+TEMPLATE 7 - Comparison Analysis (for comparing options):
+flowchart TD
+    A[Problem Statement] --> B[Gather Options]
+    B --> C[Option 1]
+    B --> D[Option 2]
+    B --> E[Option 3]
+    C --> F[Evaluate Pros 1]
+    C --> G[Evaluate Cons 1]
+    D --> H[Evaluate Pros 2]
+    D --> I[Evaluate Cons 2]
+    E --> J[Evaluate Pros 3]
+    E --> K[Evaluate Cons 3]
+    F --> L[Comparison Matrix]
+    G --> L
+    H --> L
+    I --> L
+    J --> L
+    K --> L
+    L --> M[Best Choice]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style M fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style L fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+
+TEMPLATE 8 - State Machine (for status changes):
+flowchart TD
+    A[Initial State] --> B{Trigger Event}
+    B -->|Event A| C[State 1]
+    B -->|Event B| D[State 2]
+    B -->|Event C| E[State 3]
+    C --> F{Next Trigger}
+    D --> G{Next Trigger}
+    E --> H{Next Trigger}
+    F -->|Transform| I[Advanced State]
+    G -->|Transform| I
+    H -->|Transform| I
+    F -->|Reset| A
+    G -->|Reset| A
+    H -->|Reset| A
+    I --> J[Final State]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style J fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style I fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
 
 RULES:
-- Choose the most appropriate template
+- Choose the template that best represents the concept structure
 - Replace ONLY the labels inside [ ] and { }
 - Keep labels simple - no special characters, parentheses, or complex punctuation
 - Use only letters, numbers, spaces, and hyphens
-- Maximum 3-4 words per label
+- Maximum 4-5 words per label
+- Be creative with label choices while keeping syntax simple
 
 Response format (JSON only):
 {
@@ -83,18 +199,30 @@ Response format (JSON only):
   }
 }
 
+Template Selection Guide:
+- Use TEMPLATE 1 for: Recipes, procedures, assembly instructions
+- Use TEMPLATE 2 for: Decision making, troubleshooting, classification
+- Use TEMPLATE 3 for: Manufacturing, data processing, parallel tasks
+- Use TEMPLATE 4 for: Learning cycles, improvement processes, iterations
+- Use TEMPLATE 5 for: Taxonomies, organizational charts, breakdowns
+- Use TEMPLATE 6 for: Systems analysis, quality control, validation
+- Use TEMPLATE 7 for: Comparisons, evaluations, choosing between options
+- Use TEMPLATE 8 for: Life cycles, status tracking, workflow states
+
 Example good labels:
-- "Input Data"
-- "Process Information"
-- "Make Decision"
-- "Generate Output"
+- "Gather Raw Materials"
+- "Heat to 350 Degrees"
+- "Check Quality Standards"
+- "Generate Final Report"
+- "User Authentication"
+- "Data Validation Phase"
 
 Example bad labels (NEVER USE):
-- "Process Data (CSV, JSON, etc.)"
-- "Check if temp > 25°C"
-- "Handle errors & exceptions"
+- "Heat to 350°F (or 175°C)"
+- "Check if temp > threshold"
+- "Generate report (PDF/Excel)"
 
-Remember: Use ONLY the provided templates with simple label substitutions.`;
+Remember: Use creative, descriptive labels but keep the syntax structure exactly as provided in templates.`;
   }
 
   async generateAnswer(question: string): Promise<LLMResponse> {
