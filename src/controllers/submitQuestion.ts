@@ -161,7 +161,6 @@ async function saveAnswerWithChart(questionId: string, llmResponse: LLMResponse)
         const chart: MermaidVisualization = llmResponse.visualization;
         answerData.chart = {
             create: {
-                id: chart.id,
                 title: chart.title,
                 description: chart.description,
                 chartDefinition: chart.chartDefinition,
